@@ -1,1 +1,1 @@
-# Simple_socket
+Simple realization socket dialogue
