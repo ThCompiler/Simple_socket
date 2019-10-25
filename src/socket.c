@@ -101,12 +101,26 @@ void close_connection(SOCKET* sock) {
 
 //-----------------------------------------------------------------------------------------------------------------
 
-int send_to(SOCKET* to, char* buff, size_t buff_size) {
+int send_to(SOCKET* to, void* buff, size_t buff_size) {
     assert(to   != NULL);
     assert(buff != NULL);
 
-    if (write(to->sock_to, buff, buff_size) == -1) {
-        printf("Can't send message: %s", strerror(errno));
+    switch (to->type) {
+    case CLIENT:
+    case SERVER:
+        if (send(to->sock_to, buff, buff_size, 0) == -1) {
+            printf("Can't send message: %s", strerror(errno));
+            return -1;
+        }
+        break;
+    case EMPTY:
+        if (sendto(to->sock_to, buff, buff_size, 0, (struct sockaddr *) &to->sock_addr,
+                   sizeof (to->sock_addr)) == -1) {
+            printf("Can't send message: %s", strerror(errno));
+            return -1;
+        }
+        break;
+    default:
         return -1;
     }
 
@@ -119,38 +133,26 @@ int get_from(SOCKET* from, char* buff, size_t buff_size) {
     assert(from != NULL);
     assert(buff != NULL);
 
-    int    wroten       = 0;
-    size_t total_wroten = 0;
-    char   ch           = '\0';
+    socklen_t size = sizeof(from->sock_addr);
 
-    while (1) {
-        wroten = read(from->sock_to, &ch, 1);
-
-        if (wroten == -1) {
+    switch (from->type) {
+    case CLIENT:
+    case SERVER:
+        if (recv(from->sock_to, buff, buff_size, 0) == -1) {
+            printf("Can't send message: %s", strerror(errno));
             return -1;
         }
-        else if (wroten == 0) {
-            if (total_wroten == 0) {
-                return 0;
-            }
-            else {
-                break;
-            }
+        break;
+    case EMPTY:
+        if (recvfrom(from->sock_to, buff, buff_size, 0, (struct sockaddr *) &from->sock_addr,
+                     &size) == -1) {
+            printf("Can't send message: %s", strerror(errno));
+            return -1;
         }
-        else {
-            assert(wroten == 1);
-            if (total_wroten < buff_size - 1) {
-                total_wroten++;
-                *(buff++) = ch;
-            }
-
-            if (ch == '\n' || total_wroten >= buff_size - 1) {
-                break;
-            }
-        }
+        break;
+    default:
+        return -1;
     }
-
-    buff[buff_size - 1] = '\0';
 
     return 0;
 }
