@@ -1,16 +1,16 @@
 TARGET   = server.out
 TARGET_C = client.out
-
+CC = g++
 # XXX: Don't forget backslash at the end of any line except the last one
 HDRS = \
 	   include
 
 SRCS = \
        src/main.c \
-       src/socket.c
+       src/CMPSocket.c
 SRCS_C = \
        src/main_2.c \
-       src/socket.c
+       src/CMPSocket.c
 
 .PHONY: all clean
 
