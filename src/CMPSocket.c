@@ -18,12 +18,14 @@ SOCKET* new_socket(const char *host, int port, type_socket type, type_socket wor
 
     if (inet_pton(AF_INET, host, &new_sock->sock_addr.sin_addr) <= 0) {
         fprintf(stderr, "Can't parse host address %s\n", host);
+        close_connection(new_sock);
         return NULL;
     }
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         fprintf(stderr, "Can't create a socket: %s\n", strerror(errno));
+        close_connection(new_sock);
         return NULL;
     }
 
@@ -34,12 +36,14 @@ SOCKET* new_socket(const char *host, int port, type_socket type, type_socket wor
         if (bind(sock, (struct sockaddr*)&new_sock->sock_addr,
                  sizeof(new_sock->sock_addr)) < 0) {
             fprintf(stderr, "Can't bind to %s:%d: %s\n", host, port, strerror(errno));
+            close_connection(new_sock);
             return NULL;
         }
 
         if (listen(sock, 10) < 0) {
             fprintf(stderr, "Can't start listening on %s:%d: %s\n",
                     host, port, strerror(errno));
+            close_connection(new_sock);
             return NULL;
         }
         new_sock->sock = sock;
@@ -48,6 +52,7 @@ SOCKET* new_socket(const char *host, int port, type_socket type, type_socket wor
         if (connect(sock, (struct sockaddr *)&new_sock->sock_addr,
                     sizeof(new_sock->sock_addr)) < 0) {
             fprintf(stderr, "can't connect to %s:%d: %s\n", host, port, strerror(errno));
+            close_connection(new_sock);
             return NULL;
         }
         new_sock->sock_to = sock;
@@ -57,6 +62,7 @@ SOCKET* new_socket(const char *host, int port, type_socket type, type_socket wor
         break;
     default:
         fprintf(stderr, "Error type socket: %d", type);
+        close_connection(new_sock);
         return NULL;
     }
 
@@ -83,7 +89,9 @@ int found_connect(SOCKET* server) {
     socklen_t sz = sizeof(addr_client);
     int sock = accept(server->sock, (struct sockaddr *)&addr_client, &sz);
     if (sock < 0) {
-        printf("Can't accept: %s\n", strerror(errno));
+        if (server->work_type == CMP_BLOCKING) {
+            printf("Can't accept: %s\n", strerror(errno));
+        }
         return -1;
     }
 
